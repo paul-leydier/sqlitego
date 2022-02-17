@@ -3,7 +3,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 )
 
 func execStatement(st statement, t *Table) error {
@@ -30,7 +29,7 @@ func executeInsert(st statement, t *Table) error {
 	if err != nil {
 		return err
 	}
-	log.Println("Row inserted.")
+	fmt.Println("Row inserted.")
 	return nil
 }
 
@@ -40,7 +39,7 @@ func executeSelect(st statement, t *Table) error {
 		if err != nil {
 			return err
 		}
-		log.Println(row.String())
+		fmt.Println(row.String())
 	}
 	return nil
 }
