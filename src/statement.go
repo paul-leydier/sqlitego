@@ -59,6 +59,9 @@ func parseInsertArgs(args []string, st *statement) error {
 	if err != nil {
 		return err
 	}
+	if st.RowToInsert.Id < 0 {
+		return fmt.Errorf("id must be > 0 - received %d", st.RowToInsert.Id)
+	}
 	st.RowToInsert.Username = args[1]
 	st.RowToInsert.Email = args[2]
 	return nil
