@@ -23,7 +23,7 @@ func execStatement(st statement, t *Table) error {
 
 func executeInsert(st statement, t *Table) error {
 	if t.numRows >= tableMaxRows {
-		return fmt.Errorf("cannot insert into table which contains %d rows while limit is %d", t.numPages, tableMaxRows)
+		return fmt.Errorf("cannot insert into table which contains %d rows while limit is %d", t.numRows, tableMaxRows)
 	}
 	err := serializeRow(st.RowToInsert, t.getRow(t.numRows))
 	if err != nil {
