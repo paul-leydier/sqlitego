@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -66,7 +67,14 @@ const (
 )
 
 type statement struct {
-	Type StatementType
+	Type        StatementType
+	RowToInsert Row
+}
+
+type Row struct {
+	Id       int64
+	Username string
+	Email    string
 }
 
 func prepareStatement(input string) (statement, error) {
@@ -75,6 +83,10 @@ func prepareStatement(input string) (statement, error) {
 	var st statement
 	if words[0] == "insert" {
 		st.Type = Insert
+		err := parseInsertArgs(words[1:], &st)
+		if err != nil {
+			return statement{}, err
+		}
 		return st, nil
 	}
 	if words[0] == "select" {
@@ -83,6 +95,19 @@ func prepareStatement(input string) (statement, error) {
 	}
 
 	return st, fmt.Errorf("unrecognized statement - %s", input)
+}
+
+func parseInsertArgs(args []string, st *statement) error {
+	var err error
+	nColumns := 3
+	if len(args) < nColumns {
+		return fmt.Errorf("not enough arguments were passed - required %d, got %s", nColumns, args)
+	}
+	st.RowToInsert.Id, err = strconv.ParseInt(args[0], 10, 64)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Virtual Machine
