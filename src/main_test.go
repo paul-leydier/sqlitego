@@ -14,7 +14,7 @@ func TestProcessInputValidInsert(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error was raised during a valid insert processing - %s", err)
 	}
-	if len(table.pages) != 1 || table.numPages != 1 || table.numRows != 1 || len(table.pages[0].rows) != 1 || table.pages[0].numRows != 1 {
+	if table.numRows != 1 {
 		t.Errorf("Table does not have the right format after 1 insert - %d page - %d row", table.numRows, table.numRows)
 	}
 }

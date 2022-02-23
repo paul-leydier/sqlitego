@@ -25,7 +25,7 @@ func executeInsert(st statement, t *Table) error {
 	if t.numRows >= tableMaxRows {
 		return fmt.Errorf("cannot insert into table which contains %d rows while limit is %d", t.numRows, tableMaxRows)
 	}
-	err := serializeRow(st.RowToInsert, t.getRow(t.numRows))
+	err := serializeRow(st.RowToInsert, t.getSerializedRow(t.numRows))
 	if err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func executeInsert(st statement, t *Table) error {
 
 func executeSelect(st statement, t *Table) error {
 	for i := 0; i < t.numRows; i++ {
-		row, err := deserializeRow(*t.getRow(i))
+		row, err := deserializeRow(*t.getSerializedRow(i))
 		if err != nil {
 			return err
 		}

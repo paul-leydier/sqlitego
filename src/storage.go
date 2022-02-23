@@ -3,6 +3,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/gob"
 	"fmt"
 )
 
@@ -12,40 +13,25 @@ const (
 	tableMaxRows  = rowsPerPage * tableMaxPages
 )
 
+// Table
+
 type Table struct {
-	numPages int
-	numRows  int
-	pages    []page
-}
-
-func (t *Table) getRow(rowNumber int) *[]byte {
-	pageNumber := rowNumber / rowsPerPage
-	if pageNumber >= t.numPages {
-		t.addPage()
-	}
-	page := &(t.pages[pageNumber])
-	rowOffset := rowNumber % rowsPerPage
-	if rowOffset >= page.numRows {
-		page.addRow()
-	}
-	return &(page.rows[rowOffset])
-}
-
-func (t *Table) addPage() {
-	t.pages = append(t.pages, page{t, 0, [][]byte{}})
-	t.numPages++
-}
-
-type page struct {
-	table   *Table
 	numRows int
-	rows    [][]byte
+	rows    []SerializedRow
 }
 
-func (p *page) addRow() {
-	p.rows = append(p.rows, []byte{})
-	p.numRows++
-	p.table.numRows++
+type SerializedRow []byte
+
+func (t *Table) getSerializedRow(rowNumber int) *SerializedRow {
+	if rowNumber >= len(t.rows) {
+		t.addSerializedRow()
+	}
+	return &t.rows[rowNumber]
+}
+
+func (t *Table) addSerializedRow() {
+	t.rows = append(t.rows, SerializedRow{})
+	t.numRows++
 }
 
 // Row
