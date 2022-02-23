@@ -5,6 +5,10 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
+	"strconv"
 )
 
 const (
@@ -16,12 +20,34 @@ const (
 // Table
 
 type Table struct {
+	Name     string
 	numRows  int
 	numPages int
-	pages    []page
+	Pager    *pager
 }
 
 type SerializedRow []byte
+
+func openTable(tableName string) (*Table, error) {
+	pager, nPages, err := NewPager(tableName)
+	nRows := 0
+	if nPages > 0 {
+		lastPage, err := pager.GetPage(nPages - 1)
+		if err != nil {
+			return nil, err
+		}
+		nRows = rowsPerPage*(nPages-1) + lastPage.numRows
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &Table{
+		Name:     tableName,
+		numRows:  nRows,
+		numPages: nPages,
+		Pager:    pager,
+	}, nil
+}
 
 func (t *Table) getSerializedRow(rowNumber int) (*SerializedRow, error) {
 	if rowNumber >= t.numRows {
@@ -32,7 +58,11 @@ func (t *Table) getSerializedRow(rowNumber int) (*SerializedRow, error) {
 	}
 	pageNumber := rowNumber / rowsPerPage
 	rowOffset := rowNumber % rowsPerPage
-	return t.pages[pageNumber].getSerializedRow(rowOffset), nil
+	p, err := t.Pager.GetPage(pageNumber)
+	if err != nil {
+		return nil, err
+	}
+	return p.getSerializedRow(rowOffset), nil
 }
 
 func (t *Table) addSerializedRow() error {
@@ -44,7 +74,10 @@ func (t *Table) addSerializedRow() error {
 			return err
 		}
 	}
-	p := &t.pages[t.numPages-1]
+	p, err := t.Pager.GetPage(t.numPages - 1)
+	if err != nil {
+		return err
+	}
 	if p.numRows >= rowsPerPage {
 		p, err = t.addPage()
 		if err != nil {
@@ -60,9 +93,109 @@ func (t *Table) addPage() (*page, error) {
 	if t.numPages >= tableMaxPages {
 		return nil, fmt.Errorf("too many pages - %d pages while limit is %d", t.numPages, tableMaxPages)
 	}
-	t.pages = append(t.pages, page{})
+	newPage := t.Pager.AddPage()
 	t.numPages++
-	return &t.pages[t.numPages-1], nil
+	return newPage, nil
+}
+
+func (t *Table) saveToDisk() error {
+	for i := 0; i < t.numPages; i++ {
+		err := t.Pager.WritePage(i)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Pager
+
+type pager struct {
+	tableName string
+	pages     []*page
+}
+
+const localSavePath = "./data"
+
+func NewPager(tableName string) (*pager, int, error) {
+	files, err := ioutil.ReadDir(localSavePath)
+	if err != nil {
+		return nil, 0, err
+	}
+	nPages := 0
+	for _, file := range files {
+		name := file.Name()
+		if len(name) > len(tableName) && name[:len(tableName)] == tableName {
+			nPages++
+		}
+	}
+	return &pager{
+		tableName: tableName,
+		pages:     make([]*page, nPages),
+	}, nPages, nil
+}
+
+func (p *pager) GetPage(pageNumber int) (*page, error) {
+	if p.pages[pageNumber] == nil {
+		err := p.ReadPage(pageNumber)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return p.pages[pageNumber], nil
+}
+
+func (p *pager) AddPage() *page {
+	p.pages = append(p.pages, &page{})
+	return p.pages[len(p.pages)-1]
+}
+
+func (p *pager) ReadPage(pageNumber int) error {
+	f, err := os.OpenFile(
+		localSavePath+"/"+p.tableName+strconv.FormatInt(int64(pageNumber), 10),
+		os.O_RDONLY,
+		0755,
+	)
+	if err != nil {
+		return err
+	}
+	dec := gob.NewDecoder(f)
+	page := page{}
+	unfinished := true
+	for i := 0; unfinished; i++ {
+		newRow := SerializedRow{}
+		err := dec.Decode(&newRow)
+		switch err {
+		case nil:
+			page.rows = append(page.rows, newRow)
+			page.numRows++
+		case io.EOF:
+			unfinished = false
+		default:
+			return err
+		}
+	}
+	p.pages[pageNumber] = &page
+	return nil
+}
+
+func (p *pager) WritePage(pageNumber int) error {
+	f, err := os.OpenFile(
+		localSavePath+"/"+p.tableName+strconv.FormatInt(int64(pageNumber), 10),
+		os.O_WRONLY|os.O_CREATE,
+		0755,
+	)
+	if err != nil {
+		return err
+	}
+	enc := gob.NewEncoder(f)
+	for _, row := range p.pages[pageNumber].rows {
+		err := enc.Encode(row)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Page

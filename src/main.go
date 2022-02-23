@@ -41,13 +41,20 @@ func processInput(input string, t *Table) error {
 }
 
 func main() {
-	t := Table{}
-	// main loop for CLI
-	for {
-		input := parseInput()
-		err := processInput(input, &t)
+	t, err := openTable("test")
+	defer func() {
+		err := t.saveToDisk()
 		if err != nil {
-			fmt.Printf("%s\n", err)
+			log.Fatalf("could not save table to disk - %s", err)
 		}
+	}()
+	if err != nil {
+		log.Fatalf("error creating the table - %s", err)
 	}
+	// main loop for CLI
+	for err == nil {
+		input := parseInput()
+		err = processInput(input, t)
+	}
+	fmt.Printf("%s\n", err)
 }
