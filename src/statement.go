@@ -19,16 +19,6 @@ type statement struct {
 	RowToInsert Row // Only used by insert statement
 }
 
-type Row struct {
-	Id       int64
-	Username string
-	Email    string
-}
-
-func (r Row) String() string {
-	return fmt.Sprintf("%d %s %s", r.Id, r.Username, r.Email)
-}
-
 func prepareStatement(input string) (statement, error) {
 	input = strings.ToLower(input) // Case insensitivity
 	words := strings.Split(input, " ")

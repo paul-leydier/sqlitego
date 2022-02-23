@@ -48,6 +48,18 @@ func (p *page) addRow() {
 	p.table.numRows++
 }
 
+// Row
+
+type Row struct {
+	Id       int64
+	Username string
+	Email    string
+}
+
+func (r Row) String() string {
+	return fmt.Sprintf("%d %s %s", r.Id, r.Username, r.Email)
+}
+
 func serializeRow(row Row, destination *[]byte) error {
 	var b bytes.Buffer
 	_, err := fmt.Fprintln(&b, row.Id, row.Username, row.Email)
