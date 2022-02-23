@@ -46,20 +46,22 @@ func (r Row) String() string {
 	return fmt.Sprintf("%d %s %s", r.Id, r.Username, r.Email)
 }
 
-func serializeRow(row Row, destination *[]byte) error {
-	var b bytes.Buffer
-	_, err := fmt.Fprintln(&b, row.Id, row.Username, row.Email)
+func serializeRow(row Row, destination *SerializedRow) error {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(row)
 	if err != nil {
 		return err
 	}
-	*destination = b.Bytes()
+	*destination = buf.Bytes()
 	return nil
 }
 
-func deserializeRow(source []byte) (Row, error) {
-	b := bytes.NewBuffer(source)
+func deserializeRow(source SerializedRow) (Row, error) {
+	buf := bytes.NewBuffer(source)
+	dec := gob.NewDecoder(buf)
 	var r Row
-	_, err := fmt.Fscanln(b, &r.Id, &r.Username, &r.Email)
+	err := dec.Decode(&r)
 	if err != nil {
 		return Row{}, err
 	}
