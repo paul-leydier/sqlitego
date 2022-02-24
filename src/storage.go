@@ -49,22 +49,6 @@ func openTable(tableName string) (*Table, error) {
 	}, nil
 }
 
-func (t *Table) getSerializedRow(rowNumber int) (*SerializedRow, error) {
-	if rowNumber >= t.numRows {
-		err := t.addSerializedRow()
-		if err != nil {
-			return nil, err
-		}
-	}
-	pageNumber := rowNumber / rowsPerPage
-	rowOffset := rowNumber % rowsPerPage
-	p, err := t.Pager.GetPage(pageNumber)
-	if err != nil {
-		return nil, err
-	}
-	return p.getSerializedRow(rowOffset), nil
-}
-
 func (t *Table) addSerializedRow() error {
 	var err error
 	// Initialize the table
@@ -249,4 +233,51 @@ func deserializeRow(source SerializedRow) (Row, error) {
 		return Row{}, err
 	}
 	return r, nil
+}
+
+// Cursor
+
+type Cursor struct {
+	Table        *Table
+	rowNumber    int
+	isEndOfTable bool // Position for writing a new row
+}
+
+func (t *Table) tableStart() *Cursor {
+	return &Cursor{
+		Table:        t,
+		rowNumber:    0,
+		isEndOfTable: false,
+	}
+}
+
+func (t *Table) tableEnd() *Cursor {
+	return &Cursor{
+		Table:        t,
+		rowNumber:    t.numRows,
+		isEndOfTable: true,
+	}
+}
+
+func (c *Cursor) Value() (*SerializedRow, error) {
+	if c.rowNumber >= c.Table.numRows {
+		err := c.Table.addSerializedRow()
+		if err != nil {
+			return nil, err
+		}
+	}
+	pageNumber := c.rowNumber / rowsPerPage
+	rowOffset := c.rowNumber % rowsPerPage
+	p, err := c.Table.Pager.GetPage(pageNumber)
+	if err != nil {
+		return nil, err
+	}
+	return p.getSerializedRow(rowOffset), nil
+}
+
+func (c *Cursor) Advance() {
+	c.rowNumber++
+	if c.rowNumber >= c.Table.numRows {
+		c.isEndOfTable = true
+	}
 }
