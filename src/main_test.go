@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -77,5 +78,44 @@ func TestProcessInputTooManyInserts(t *testing.T) {
 	err := processInput("insert 10001 user10001 person10001@example.com", table)
 	if err == nil {
 		t.Fatal("error was not raised during an invalid insert processing")
+	}
+}
+
+func TestDiskPersistence(t *testing.T) {
+	cleanTestTables()
+	table, _ := openTable(testTableName)
+
+	// Mock console output
+	rescueStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// actual work
+	err := processInput("insert 1 user1 person1@example.com", table)
+	if err != nil {
+		t.Fatalf("error was raised during a valid insert processing - %s", err)
+	}
+	err = table.saveToDisk()
+	if err != nil {
+		t.Fatalf("error while saving table content to disk")
+	}
+	err = processInput(".exit", table)
+	if !errors.Is(err, ExitCommandError{}) {
+		t.Fatalf("error was raised during exit processing - %s", err)
+	}
+	table, _ = openTable(testTableName)
+	err = processInput("select", table)
+	if err != nil {
+		t.Fatalf("error was raised during select processing - %s", err)
+	}
+
+	// End mock, collect output
+	w.Close()
+	out, _ := ioutil.ReadAll(r)
+	os.Stdout = rescueStdout
+
+	// actual test
+	if string(out) != "Row inserted.\n1 user1 person1@example.com\n" {
+		t.Errorf("statement output:\n%s", string(out))
 	}
 }
