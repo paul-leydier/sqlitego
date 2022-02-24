@@ -40,8 +40,8 @@ func processInput(input string, t *Table) error {
 	return nil
 }
 
-func main() {
-	t, err := openTable("test")
+func cliSession(table string) {
+	t, err := openTable(table)
 	defer func() {
 		err := t.saveToDisk()
 		if err != nil {
@@ -49,7 +49,7 @@ func main() {
 		}
 	}()
 	if err != nil {
-		log.Fatalf("error creating the table - %s", err)
+		log.Fatalf("error opening the table - %s", err)
 	}
 	// main loop for CLI
 	for err == nil {
@@ -57,4 +57,8 @@ func main() {
 		err = processInput(input, t)
 	}
 	fmt.Printf("%s\n", err)
+}
+
+func main() {
+	cliSession("test")
 }
