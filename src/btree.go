@@ -1,7 +1,5 @@
 package main
 
-import "fmt"
-
 type NodeType int
 
 const (
@@ -9,6 +7,8 @@ const (
 	Leaf
 )
 
+// BTree data structure
+// See https://en.wikipedia.org/wiki/B%2B_tree
 type BTree struct {
 	RootNode *Node
 	Order    int
@@ -21,7 +21,7 @@ func EmptyTree(order int) *BTree {
 	root := Node{
 		nodeType: Leaf,
 		children: nil,
-		limits:   nil,
+		keys:     nil,
 		values:   map[int]SerializedRow{},
 	}
 	return &BTree{
@@ -30,24 +30,20 @@ func EmptyTree(order int) *BTree {
 	}
 }
 
-func (t *BTree) AddSerializedRow(rowNumber int, row SerializedRow) {
-	t.RootNode.addSerializedRow(rowNumber, row)
+func (t *BTree) Insert(rowNumber int, row SerializedRow) {
+	t.Search(rowNumber).insert(rowNumber, row)
 }
 
-func (t *BTree) FetchSerializedRow(rowNumber int) (SerializedRow, error) {
-	return t.RootNode.fetchSerializedRow(rowNumber)
+func (t *BTree) Search(k int) *Node {
+	return t.RootNode.search(k)
 }
 
-func (n *Node) fetchSerializedRow(rowNumber int) (SerializedRow, error) {
+func (n *Node) search(k int) *Node {
 	if n.nodeType == Leaf {
-		row, ok := n.values[rowNumber]
-		if !ok {
-			return nil, fmt.Errorf("row %d does not exist", rowNumber)
-		}
-		return row, nil
+		return n
 	}
-	targetNode := ArgFirstSup(n.limits, rowNumber)
-	return n.children[targetNode].fetchSerializedRow(rowNumber)
+	targetNode := ArgFirstSup(n.keys, k)
+	return n.children[targetNode].search(k)
 }
 
 func ArgFirstSup(sortedSlice []int, n int) int {
@@ -63,21 +59,47 @@ func ArgFirstSup(sortedSlice []int, n int) int {
 }
 
 type Node struct {
+	parent   *Node
+	order    int
 	nodeType NodeType
 	children []*Node
-	limits   []int
+	keys     []int
 	values   map[int]SerializedRow
 }
 
-func (n *Node) addSerializedRow(rowNumber int, row SerializedRow) {
-	if n.nodeType == Leaf {
-		// TODO: if > Order, should split the node
-		if n.values == nil {
-			n.values = map[int]SerializedRow{}
+func (n *Node) insert(rowNumber int, row SerializedRow) {
+	nValues := len(n.values)
+	if nValues >= n.order {
+		// split the bucket
+		valuesFirstHalf, valuesSecondHalf := map[int]SerializedRow{}, map[int]SerializedRow{}
+		i := 0
+		var limitKey int
+		for key, value := range n.values {
+			if i < (n.order+1)/2 {
+				valuesFirstHalf[key] = value
+			} else {
+				valuesSecondHalf[key] = value
+			}
+			i++
+			if i == (n.order+1)/2 {
+				limitKey = key
+			}
 		}
-		n.values[rowNumber] = row
-	} else {
-		targetNode := ArgFirstSup(n.limits, rowNumber)
-		n.children[targetNode].addSerializedRow(rowNumber, row)
+		n.values = valuesFirstHalf
+		newNode := &Node{
+			parent:   n.parent,
+			order:    n.order,
+			nodeType: Leaf,
+			children: nil,
+			keys:     nil,
+			values:   valuesSecondHalf,
+		}
+		// add key and node to parent
+		n.parent.insertChild(limitKey, newNode)
 	}
+	n.values[rowNumber] = row
+}
+
+func (n *Node) insertChild(key int, child *Node) {
+
 }
