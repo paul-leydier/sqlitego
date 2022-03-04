@@ -7,18 +7,18 @@ const (
 	leafNode
 )
 
-// BTree data structure
+// BPlusTree data structure
 // See https://en.wikipedia.org/wiki/B%2B_tree
 // https://github.com/collinglass/bptree/blob/9bfc0de8049e54d385ef49a54eb54d7c2a61debd/tree.go
 // https://www.programiz.com/dsa/b-plus-tree
-type BTree struct {
+type BPlusTree struct {
 	rootNode *node
 	order    int
 }
 
-func EmptyTree(order int) *BTree {
+func EmptyTree(order int) *BPlusTree {
 	if order < 1 {
-		panic("Negative or null order given when instanciating a BTree")
+		panic("Negative or null order given when instanciating a BPlusTree")
 	}
 	root := node{
 		nodeType: leafNode,
@@ -26,13 +26,13 @@ func EmptyTree(order int) *BTree {
 		keys:     nil,
 		records:  []SerializedRow{},
 	}
-	return &BTree{
+	return &BPlusTree{
 		rootNode: &root,
 		order:    order,
 	}
 }
 
-func (t *BTree) Insert(rowNumber int, row SerializedRow) {
+func (t *BPlusTree) Insert(rowNumber int, row SerializedRow) {
 	// Since every element is inserted into the leaf node, go to the appropriate leaf node
 	leaf := t.Search(rowNumber)
 	// Insert the key into the leaf node in ascending order
@@ -41,7 +41,7 @@ func (t *BTree) Insert(rowNumber int, row SerializedRow) {
 	t.balanceFromLeaf(leaf)
 }
 
-func (t *BTree) balanceFromLeaf(leaf *node) {
+func (t *BPlusTree) balanceFromLeaf(leaf *node) {
 	// No need for balancing
 	if len(leaf.records) <= t.order {
 		return
@@ -77,7 +77,7 @@ func (t *BTree) balanceFromLeaf(leaf *node) {
 	t.balanceFromInternal(leaf.parent)
 }
 
-func (t *BTree) balanceFromInternal(n *node) {
+func (t *BPlusTree) balanceFromInternal(n *node) {
 	// No need for balancing
 	if len(n.keys) <= t.order {
 		return
@@ -113,7 +113,7 @@ func (t *BTree) balanceFromInternal(n *node) {
 	t.balanceFromInternal(n.parent)
 }
 
-func (t *BTree) Search(k int) *node {
+func (t *BPlusTree) Search(k int) *node {
 	return t.rootNode.search(k)
 }
 
