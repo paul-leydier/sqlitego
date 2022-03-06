@@ -22,6 +22,26 @@ type BPlusTree struct {
 	order    int
 }
 
+func (t *BPlusTree) String() string {
+	return t.rootNode.String(0)
+}
+
+func (n *node) String(level int) string {
+	result := strings.Repeat("\t", level) + "|-"
+	if n.nodeType == leafNode {
+		for i := 0; i < len(n.keys); i++ {
+			row, _ := deserializeRow(n.records[i])
+			result += strconv.FormatInt(int64(n.keys[i]), 10) + ": " + row.String() + "\t"
+		}
+	} else {
+		result += "\n"
+		for i := 0; i < len(n.children); i++ {
+			result += n.children[i].String(level + 1)
+		}
+	}
+	return result + "\n"
+}
+
 func EmptyTree(order int) *BPlusTree {
 	if order < 1 {
 		panic("Negative or null order given when instanciating a BPlusTree")
