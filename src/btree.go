@@ -1,5 +1,11 @@
 package main
 
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
 type nodeType int
 
 const (
@@ -34,7 +40,7 @@ func EmptyTree(order int) *BPlusTree {
 
 func (t *BPlusTree) Insert(rowNumber int, row SerializedRow) {
 	// Since every element is inserted into the leaf node, go to the appropriate leaf node
-	leaf := t.Search(rowNumber)
+	leaf := t.searchNode(rowNumber)
 	// Insert the key into the leaf node in ascending order
 	leaf.insertRecord(rowNumber, row)
 	// If the leaf is full, balance the tree
@@ -59,7 +65,7 @@ func (t *BPlusTree) balanceFromLeaf(leaf *node) {
 		t.rootNode = leaf.parent
 	}
 	// Break the node at m/2th position.
-	breakPoint := t.order / 2
+	breakPoint := (t.order + 1) / 2
 	rightNode := node{
 		parent:   leaf.parent,
 		nodeType: leafNode,
@@ -95,26 +101,51 @@ func (t *BPlusTree) balanceFromInternal(n *node) {
 		t.rootNode = n.parent
 	}
 	// Break the node at m/2th position.
-	breakPoint := t.order / 2
-	breakPointKey := n.keys[breakPoint]
+	breakPoint := (t.order + 1) / 2
+	breakPointKey := n.keys[breakPoint-1]
 	rightNode := node{
 		parent:   n.parent,
-		nodeType: leafNode,
-		children: n.children[breakPoint+1:],
-		keys:     n.keys[breakPoint+1:],
+		nodeType: internalNode,
+		children: n.children[breakPoint:],
+		keys:     n.keys[breakPoint:],
 		records:  nil,
 		nextNode: nil,
 	}
-	n.children = n.children[:breakPoint+1]
-	n.keys = n.keys[:breakPoint] // breakPoint key is excluded here since it will end up in parent keys
+	n.children = n.children[:breakPoint]
+	n.keys = n.keys[:breakPoint-1] // breakPoint key is excluded here since it will end up in parent keys
+	for _, child := range rightNode.children {
+		child.parent = &rightNode
+	}
 	// Add m/2th key to the parent node as well.
 	n.parent.insertChild(breakPointKey, &rightNode)
 	// If the parent node is already full, split.
 	t.balanceFromInternal(n.parent)
 }
 
-func (t *BPlusTree) Search(k int) *node {
+func (t *BPlusTree) searchNode(k int) *node {
 	return t.rootNode.search(k)
+}
+
+type MissingKeyError struct {
+	rowNumber int
+}
+
+func (e *MissingKeyError) Error() string {
+	return fmt.Sprintf("row %d not found", e.rowNumber)
+}
+
+func (t *BPlusTree) SearchRow(k int) (*SerializedRow, error) {
+	n := t.searchNode(k)
+	found := -1
+	for i, key := range n.keys {
+		if key == k {
+			found = i
+		}
+	}
+	if found == -1 {
+		return nil, &MissingKeyError{rowNumber: k}
+	}
+	return &n.records[found], nil
 }
 
 func ArgFirstSup(sortedSlice []int, n int) int {
