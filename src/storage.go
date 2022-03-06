@@ -11,6 +11,8 @@ const (
 	tableMaxPages = 100
 	rowsPerPage   = 100
 	tableMaxRows  = rowsPerPage * tableMaxPages
+	treeOrder     = 5
+	localSavePath = "./data"
 )
 
 // Table
@@ -24,18 +26,8 @@ type Table struct {
 type SerializedRow []byte
 
 func openTable(tableName string) (*Table, error) {
-	pager, nPages, err := NewPager(tableName)
+	pager := EmptyTree(treeOrder)
 	nRows := 0
-	if nPages > 0 {
-		lastPage, err := pager.GetPage(nPages - 1)
-		if err != nil {
-			return nil, err
-		}
-		nRows = rowsPerPage*(nPages-1) + lastPage.numRows
-	}
-	if err != nil {
-		return nil, err
-	}
 	return &Table{
 		Name:    tableName,
 		numRows: nRows,
@@ -102,19 +94,11 @@ func (t *Table) tableEnd() *Cursor {
 }
 
 func (c *Cursor) Value() (*SerializedRow, error) {
-	if c.rowNumber >= c.Table.numRows {
-		err := c.Table.addSerializedRow()
-		if err != nil {
-			return nil, err
-		}
+	if c.isEndOfTable {
+		c.Table.Pager.Insert(c.rowNumber, SerializedRow{})
+		c.Table.numRows++
 	}
-	pageNumber := c.rowNumber / rowsPerPage
-	rowOffset := c.rowNumber % rowsPerPage
-	p, err := c.Table.Pager.GetPage(pageNumber)
-	if err != nil {
-		return nil, err
-	}
-	return p.getSerializedRow(rowOffset), nil
+	return c.Table.Pager.SearchRow(c.rowNumber)
 }
 
 func (c *Cursor) Advance() {
