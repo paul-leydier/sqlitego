@@ -42,12 +42,6 @@ func processInput(input string, t *Table) error {
 
 func cliSession(table string) {
 	t, err := openTable(table)
-	defer func() {
-		err := t.saveToDisk()
-		if err != nil {
-			log.Fatalf("could not save table to disk - %s", err)
-		}
-	}()
 	if err != nil {
 		log.Fatalf("error opening the table - %s", err)
 	}
