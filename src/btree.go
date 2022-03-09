@@ -122,17 +122,17 @@ func (t *BPlusTree) balanceFromInternal(n *node) {
 	}
 	// Break the node at m/2th position.
 	breakPoint := (t.order + 1) / 2
-	breakPointKey := n.keys[breakPoint-1]
+	breakPointKey := n.keys[breakPoint]
 	rightNode := node{
 		parent:   n.parent,
 		nodeType: internalNode,
-		children: n.children[breakPoint:],
-		keys:     n.keys[breakPoint:],
+		children: n.children[breakPoint+1:],
+		keys:     n.keys[breakPoint+1:],
 		records:  nil,
 		nextNode: nil,
 	}
-	n.children = n.children[:breakPoint]
-	n.keys = n.keys[:breakPoint-1] // breakPoint key is excluded here since it will end up in parent keys
+	n.children = n.children[:breakPoint+1]
+	n.keys = n.keys[:breakPoint] // breakPoint key is excluded here since it will end up in parent keys
 	for _, child := range rightNode.children {
 		child.parent = &rightNode
 	}
