@@ -12,7 +12,6 @@ const (
 	rowsPerPage   = 100
 	tableMaxRows  = rowsPerPage * tableMaxPages
 	treeOrder     = 5
-	localSavePath = "./data"
 )
 
 // Table
